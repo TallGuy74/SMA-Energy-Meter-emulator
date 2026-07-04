@@ -22,10 +22,68 @@ The add-on will subscribe to the following mqtt topic: `sma/emeter/<NUMERIC_METE
   "energyIn": 5000.603, // consumed energy in kWh
   "energyOut": 2000.707, // produced energy in Kwh
   "destinationAddresses": [
-    "192.168.1.34" // ip-address(es) to send the packets to. This should be the ip of the inverter. If you leave this emtpy then multicast will be used. (multicast is not confirmed to work yet)
+    "192.168.1.34" // ip-address(es) to send the packets to. Leave empty to multicast to 239.12.255.254:9522 like a real Energy Meter (this fork runs with host_network, so multicast reaches the LAN).
   ]
 }
 ```
+
+## Per-phase values (v2 payload, this fork)
+
+Every field below is optional and backward compatible: telegrams always contain the complete
+channel set of a real SMA Energy Meter, and any field you do not send is transmitted as 0 —
+exactly what the original add-on sent for the phase channels. Fields per phase `x` in 1..3:
+
+| field | unit | SMA channel |
+|---|---|---|
+| `powerInLx` / `powerOutLx` | W | active power + / − (1:21/22, 41/42, 61/62) |
+| `energyInLx` / `energyOutLx` | kWh | active energy counters |
+| `reactivePowerInLx` / `reactivePowerOutLx` | var | reactive power |
+| `reactiveEnergyInLx` / `reactiveEnergyOutLx` | kvarh | reactive energy |
+| `apparentPowerInLx` / `apparentPowerOutLx` | VA | apparent power |
+| `apparentEnergyInLx` / `apparentEnergyOutLx` | kVAh | apparent energy |
+| `currentLx` | A | phase current (1:31/51/71) |
+| `voltageLx` | V | phase voltage (1:32/52/72) |
+| `powerFactorLx` | cos φ | phase power factor |
+
+Totals gain the same optional companions: `reactivePowerIn/Out`, `reactiveEnergyIn/Out`,
+`apparentPowerIn/Out`, `apparentEnergyIn/Out`, `powerFactor`, and `frequency` (Hz — emitted
+only when provided; it is an Energy Meter 2.0 channel).
+
+### Derived values (`derive_missing`, default on)
+
+To fill the telegram as completely as a real meter, missing values that follow from the
+provided ones are derived automatically (turn off with the `derive_missing` option):
+
+* `apparentPower*` ← `|activePower*|` (assumes cos φ ≈ 1)
+* `currentLx` ← apparent power ÷ `voltageLx` (much finer than DSMR's whole-ampere current fields)
+* `powerFactor*` ← 1.0 when active power is provided and reactive power is not
+
+### Example: DSMR 5.x per-phase payload from Home Assistant
+
+```yaml
+service: mqtt.publish
+data:
+  topic: sma/emeter/2/state
+  payload_template: |-
+    {
+      "powerIn": {{ states('sensor.electricity_meter_power_consumption') | float(0) * 1000 }},
+      "powerOut": {{ states('sensor.electricity_meter_power_production') | float(0) * 1000 }},
+      "energyIn": {{ states('sensor.energy_grid_consumed_helper') }},
+      "energyOut": {{ states('sensor.energy_grid_returned_helper') }},
+      "powerInL1": {{ states('sensor.electricity_meter_power_consumption_phase_l1') | float(0) }},
+      "powerOutL1": {{ states('sensor.electricity_meter_power_production_phase_l1') | float(0) }},
+      "voltageL1": {{ states('sensor.electricity_meter_voltage_phase_l1') | float(0) }},
+      "powerInL2": {{ states('sensor.electricity_meter_power_consumption_phase_l2') | float(0) }},
+      "powerOutL2": {{ states('sensor.electricity_meter_power_production_phase_l2') | float(0) }},
+      "voltageL2": {{ states('sensor.electricity_meter_voltage_phase_l2') | float(0) }},
+      "powerInL3": {{ states('sensor.electricity_meter_power_consumption_phase_l3') | float(0) }},
+      "powerOutL3": {{ states('sensor.electricity_meter_power_production_phase_l3') | float(0) }},
+      "voltageL3": {{ states('sensor.electricity_meter_voltage_phase_l3') | float(0) }}
+    }
+```
+
+(Adjust units to your sensors: the example assumes the total power sensors report kW and the
+phase sensors report W, as the HA DSMR integration does by default.)
 
 ## How to use with HomeWizard meters
 

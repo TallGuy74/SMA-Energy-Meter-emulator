@@ -6,7 +6,7 @@ import time
 import paho.mqtt.client as mqtt
 import util
 from config import settings, workingdata
-from emeter import emeterPacket
+from emeter import emeterPacket, payload_to_values, build_packet
 
 
 def setup_mqtt():
@@ -51,16 +51,11 @@ def on_message(client, userdata, msg):
         data = json.loads(msg.payload)
         logging.debug(f"Message data: {data}")
 
-        packet = emeterPacket(int(serial_number))
-        packet.begin(int(time.time() * 1000))
-
-        # Totals
-        packet.addMeasurementValue(emeterPacket.SMA_POSITIVE_ACTIVE_POWER, round(data['powerIn'] * 10))
-        packet.addCounterValue(emeterPacket.SMA_POSITIVE_ACTIVE_ENERGY, round(data['energyIn'] * 1000 * 3600))
-        packet.addMeasurementValue(emeterPacket.SMA_NEGATIVE_ACTIVE_POWER, round(data['powerOut'] *10))
-        packet.addCounterValue(emeterPacket.SMA_NEGATIVE_ACTIVE_ENERGY, round(data['energyOut'] * 1000 * 3600))
- 
-        packet.end()
+        # v1 payloads (powerIn/powerOut/energyIn/energyOut) and v2 per-phase payloads both land here;
+        # build_packet emits the complete canonical channel set (absent values -> 0), so telegrams are
+        # always Tripower-valid and can never contain duplicate OBIS ids.
+        values = payload_to_values(data, derive=settings.get("derive_missing", True))
+        packet = build_packet(serial_number, int(time.time() * 1000), values)
 
         packet_data = packet.getData()[:packet.getLength()]
         destination_addresses = data.get('destinationAddresses', [])

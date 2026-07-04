@@ -5,7 +5,7 @@ import time
 
 import requests
 from config import settings, workingdata
-from emeter import emeterPacket
+from emeter import emeterPacket, payload_to_values, build_packet
 from zeroconf import ServiceBrowser, ServiceStateChange, Zeroconf
 
 
@@ -54,7 +54,6 @@ def update_homewizard():
             hostnames = workingdata['homewizard_meters']
 
         for (hostname, serial_number) in hostnames.items():
-            packet = emeterPacket(int(serial_number))
             # Perform the GET request
             response = requests.get(f'http://{hostname}/api/v1/data')
             
@@ -65,32 +64,30 @@ def update_homewizard():
             data = response.json()
             logging.debug(f"Message data: {data}")
 
-            # Create a packet instance
-            packet = emeterPacket(int(serial_number))
-            packet.begin(int(time.time() * 1000))
-
-            # Extract values from the JSON data and add them to the packet
-            # Process active power values
+            # Map the HomeWizard reading to payload keys and build one canonical telegram.
+            # (The old path appended reactive-power zeros that begin() had already written as
+            # dummies -> duplicate OBIS entries in every HomeWizard telegram. build_packet
+            # structurally prevents that.)
+            hw = {}
             active_power = data['active_power_w']
-            if active_power > 0:
-                packet.addMeasurementValue(emeterPacket.SMA_POSITIVE_ACTIVE_POWER, round(active_power * 10))
-                packet.addMeasurementValue(emeterPacket.SMA_NEGATIVE_ACTIVE_POWER, 0)
-            else:
-                packet.addMeasurementValue(emeterPacket.SMA_POSITIVE_ACTIVE_POWER, 0)
-                packet.addMeasurementValue(emeterPacket.SMA_NEGATIVE_ACTIVE_POWER, round(active_power * -10))  # Sending absolute value for negative
+            hw['powerIn'] = active_power if active_power > 0 else 0.0
+            hw['powerOut'] = -active_power if active_power < 0 else 0.0
+            hw['energyIn'] = data['total_power_import_t1_kwh'] + data['total_power_import_t2_kwh']
+            hw['energyOut'] = data['total_power_export_t1_kwh'] + data['total_power_export_t2_kwh']
+            for x in (1, 2, 3):                                     # per-phase fields exist on 3-phase HomeWizard meters
+                pw = data.get(f'active_power_l{x}_w')
+                if pw is not None:
+                    hw[f'powerInL{x}'] = pw if pw > 0 else 0.0
+                    hw[f'powerOutL{x}'] = -pw if pw < 0 else 0.0
+                if data.get(f'active_voltage_l{x}_v') is not None:
+                    hw[f'voltageL{x}'] = data[f'active_voltage_l{x}_v']
+                if data.get(f'active_current_l{x}_a') is not None:
+                    hw[f'currentL{x}'] = abs(data[f'active_current_l{x}_a'])
+            if data.get('active_frequency_hz') is not None:
+                hw['frequency'] = data['active_frequency_hz']
 
-            packet.addMeasurementValue(emeterPacket.SMA_POSITIVE_REACTIVE_POWER, 0)
-            packet.addMeasurementValue(emeterPacket.SMA_NEGATIVE_REACTIVE_POWER, 0)
-
-            # Sum the total energy imports (t1 and t2)
-            total_power_import_kwh = data['total_power_import_t1_kwh'] + data['total_power_import_t2_kwh']
-            packet.addCounterValue(emeterPacket.SMA_POSITIVE_ACTIVE_ENERGY, round(total_power_import_kwh * 1000 * 3600))
-
-            # Sum the total energy exports (t1 and t2)
-            total_power_export_kwh = data['total_power_export_t1_kwh'] + data['total_power_export_t2_kwh']
-            packet.addCounterValue(emeterPacket.SMA_NEGATIVE_ACTIVE_ENERGY, round(total_power_export_kwh * 1000 * 3600))
-
-            packet.end()
+            values = payload_to_values(hw, derive=settings.get("derive_missing", True))
+            packet = build_packet(serial_number, int(time.time() * 1000), values)
 
             # Get packet data
             packet_data = packet.getData()[:packet.getLength()]

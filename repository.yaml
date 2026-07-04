@@ -1,4 +1,4 @@
 # https://developers.home-assistant.io/docs/add-ons/repository#repository-configuration
-name: SMA Energy Meter emulator
-url: 'https://github.com/Roeland54/SMA-Energy-Meter-emulator'
-maintainer: Roeland54
+name: TallGuy74 add-ons (SMA per-phase emeter fork)
+url: 'https://github.com/TallGuy74/SMA-Energy-Meter-emulator'
+maintainer: TallGuy74

@@ -1,6 +1,6 @@
 name: "SMA Energy Meter emulator (per-phase)"
 description: "Simulate SMA energy meters incl. per-phase values, multicast like a real EM. Fork of Roeland54/SMA-Energy-Meter-emulator."
-version: "1.0.0-pp1"
+version: "1.0.0-pp2"
 slug: sma_perphase
 url: "https://github.com/TallGuy74/SMA-Energy-Meter-emulator"
 arch:
@@ -22,6 +22,7 @@ options:
     password: "auto_password"
   enable_homewizard: false
   derive_missing: true
+  sma_mqtt_topic: "sma2/emeter"
 schema:
   enable_mqtt: bool?
   mqtt:
@@ -31,6 +32,7 @@ schema:
     password: str?
   enable_homewizard: bool
   derive_missing: bool?
+  sma_mqtt_topic: str?
   homewizard_manual_addresses:
     - str?
   homewizard_destination_addresses:

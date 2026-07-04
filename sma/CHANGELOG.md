@@ -1,3 +1,10 @@
+# 1.0.0-pp2
+
+* Default MQTT topic changed to `sma2/emeter` and exposed as the `sma_mqtt_topic` add-on
+  option. With the upstream default (`sma/emeter`) the fork also picked up the original
+  add-on's serial-1 messages and both add-ons emulated the same meter simultaneously —
+  double datagrams to the inverter.
+
 # 1.0.0-pp1 (per-phase fork)
 
 * Renamed add-on (`sma_perphase`) so it installs alongside the original.

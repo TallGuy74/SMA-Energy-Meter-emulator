@@ -13,7 +13,7 @@ This home assistant add-on can emulate the existence of one or more SMA Energy M
 
 If you have a mqtt broker configured in home assistant you do not need to configure anything. Otherwise fill in the mqtt configuration in the configuration tab.
 
-**This fork subscribes to `sma2/emeter/<NUMERIC_METER_ID>/state` by default** (configurable via the `sma_mqtt_topic` option) so it can run alongside the original add-on without both emulating the same meters — with the original topic, every serial-1 message would make BOTH add-ons send datagrams for meter 1 to the inverter. When receiving the first message the emulator wil start the emulation of the energy meter with the provided <NUMERIC_METER_ID>. The emulator wil send a udp packet every 1000ms. The content of the packet wil stay the same until it gets updated by the next mqtt message.
+**This fork subscribes to `sma/emeter2.0/<NUMERIC_METER_ID>/state` by default** (configurable via the `sma_mqtt_topic` option) so it can run alongside the original add-on without both emulating the same meters — with the original topic, every serial-1 message would make BOTH add-ons send datagrams for meter 1 to the inverter. When receiving the first message the emulator wil start the emulation of the energy meter with the provided <NUMERIC_METER_ID>. The emulator wil send a udp packet every 1000ms. The content of the packet wil stay the same until it gets updated by the next mqtt message.
 
 ```json
 {
@@ -63,7 +63,7 @@ provided ones are derived automatically (turn off with the `derive_missing` opti
 ```yaml
 service: mqtt.publish
 data:
-  topic: sma/emeter/2/state
+  topic: sma/emeter2.0/2/state
   payload_template: |-
     {
       "powerIn": {{ states('sensor.electricity_meter_power_consumption') | float(0) * 1000 }},

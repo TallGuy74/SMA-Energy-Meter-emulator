@@ -45,7 +45,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
 
 def on_message(client, userdata, msg):
     logging.debug(f"Received message on topic {msg.topic}")
-    serial_number = msg.topic.split('/')[2]
+    serial_number = msg.topic.split('/')[-2]                  # <base>/<serial>/state -> second-to-last segment, works for any base depth
 
     try:
         data = json.loads(msg.payload)

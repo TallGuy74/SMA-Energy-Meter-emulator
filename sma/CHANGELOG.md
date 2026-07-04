@@ -1,3 +1,12 @@
+# 1.0.0-pp3
+
+* Default MQTT topic base is now `sma/emeter2.0` (full message topic
+  `sma/emeter2.0/<id>/state`), staying inside the `sma/` namespace while
+  remaining distinct from the original add-on's `sma/emeter`.
+* Serial extraction is now depth-independent (second-to-last topic segment);
+  it was a hardcoded segment index that silently misparsed serials for topic
+  bases with more or fewer than two segments.
+
 # 1.0.0-pp2
 
 * Default MQTT topic changed to `sma2/emeter` and exposed as the `sma_mqtt_topic` add-on

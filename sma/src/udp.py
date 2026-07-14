@@ -18,14 +18,20 @@ def udp_sender(userdata):
     while True:
         homewizard.update_homewizard()
 
-        with userdata['lock']:
-            for serial_number, (packet_data, destination_addresses) in userdata['packets'].items():
-                if destination_addresses:
-                    for address in destination_addresses:
-                        udp_socket.sendto(packet_data, (address, userdata['udp_port']))
-                        logging.debug(f"Sent packet to {address} for serial number {serial_number}")
-                else:
-                    udp_socket.sendto(packet_data, (userdata['udp_address'], userdata['udp_port']))
-                    logging.debug(f"Sent multicast packet for serial number {serial_number}")
-                    logging.debug(f"With packet data: {packet_data}")
+        try:
+            with userdata['lock']:
+                for serial_number, (packet_data, destination_addresses) in userdata['packets'].items():
+                    if destination_addresses:
+                        for address in destination_addresses:
+                            udp_socket.sendto(packet_data, (address, userdata['udp_port']))
+                            logging.debug(f"Sent packet to {address} for serial number {serial_number}")
+                    else:
+                        udp_socket.sendto(packet_data, (userdata['udp_address'], userdata['udp_port']))
+                        logging.debug(f"Sent multicast packet for serial number {serial_number}")
+                        logging.debug(f"With packet data: {packet_data}")
+        except OSError as e:
+            # A transient network error (e.g. [Errno 101] Network unreachable during a route/interface blip)
+            # must NOT kill the sender thread — otherwise the meter feed stops until the add-on is restarted.
+            # Log and retry on the next tick; sending resumes automatically once the route is back.
+            logging.warning(f"udp send failed ({e}); retrying next tick")
         time.sleep(1)

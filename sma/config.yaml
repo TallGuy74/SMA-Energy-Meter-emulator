@@ -1,6 +1,6 @@
 name: "SMA Energy Meter emulator (per-phase)"
 description: "Simulate SMA energy meters incl. per-phase values, multicast like a real EM. Fork of Roeland54/SMA-Energy-Meter-emulator."
-version: "1.0.0-pp3"
+version: "1.0.0-pp4"
 slug: sma_perphase
 url: "https://github.com/TallGuy74/SMA-Energy-Meter-emulator"
 arch:

@@ -1,3 +1,12 @@
+# 1.0.0-pp4
+
+* The UDP sender thread no longer dies on a transient network error. A single
+  `OSError` (e.g. `[Errno 101] Network unreachable` during a route/interface
+  blip) used to propagate out of the send loop and permanently stop the thread,
+  silently freezing the meter feed until the add-on was restarted. Sends are now
+  wrapped so such errors are logged and retried on the next tick, resuming
+  automatically once the route returns.
+
 # 1.0.0-pp3
 
 * Default MQTT topic base is now `sma/emeter2.0` (full message topic
